@@ -1,10 +1,10 @@
 all: main
 
 main: main.o
-	g++ main.o -o main
+	g++ main.o complex.o -o main
 
-main.o: main.cpp complex.o
-	g++ main.cpp -c
+main.o: main.cpp complex.h
+	g++ main.cpp
 
 complex.o: complex.cpp complex.h
 	g++ complex.cpp -c

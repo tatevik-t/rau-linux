@@ -1,5 +1,5 @@
 #include <iostream>
-#include "complex.cpp"
+#include "complex.h"
 #include <vector>
 
 void merge(std::vector<Complex>& arr, size_t start, size_t mid, size_t end)
