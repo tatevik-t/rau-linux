@@ -1,2 +1,6 @@
+# compiled object files
 *.o
+
+# executables
 main
+*.out
