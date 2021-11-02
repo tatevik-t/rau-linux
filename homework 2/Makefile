@@ -5,3 +5,6 @@ copy: copy.o
 
 copy.o: copy.cpp
 	g++ copy.cpp -c
+
+clean:
+	rm *.o copy
