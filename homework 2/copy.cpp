@@ -10,20 +10,29 @@ ssize_t PhysSize(int& file) {
     lseek(file, 0, SEEK_SET);
     
     // variables to keep the size and tmp values
-    ssize_t physSize = 0, add, d;
+    ssize_t physSize = 0;
+    off_t add, d;
     
     // count physical size
-    do {
+    while(true) {
         // jump to the next hole, register the size
         add = lseek(file, 0, SEEK_HOLE);
-        if(add < 0) {
+        
+        // reached end
+        if (add <= 0) {
             break;
         }
+
         physSize += add;
         
         // jump to the next data
         d = lseek(file, 0, SEEK_DATA);
-    } while (add > 0 && d > 0);
+
+        // reached end
+        if (d <= 0) {
+            break;
+        }
+    }
 
     // reset cursor
     lseek(file, 0, SEEK_SET);
@@ -91,9 +100,9 @@ int main(int argc, char** argv) {
 
     // create a buffer for reading
     char* buffer = new char[BUFFER_SIZE];
-
-    ssize_t logSize = 0, add, d;
     
+    // keep size for checking, get real size
+    ssize_t logSize = 0, add, d;
     ssize_t size = LogSize(file);
 
     // iterate over holes and data
@@ -107,9 +116,12 @@ int main(int argc, char** argv) {
         // return for copying
         lseek(file, logSize, SEEK_SET);
         
+        // add data size
         logSize += add;
+        
         // copy
         for(size_t i = 1; (i-1)*BUFFER_SIZE < add; ++i) {
+            // read
             ssize_t readBytes = read(file, buffer, BUFFER_SIZE);
             
             // check if could not read due to error
@@ -130,9 +142,13 @@ int main(int argc, char** argv) {
         
         // jump to the next data
         d = lseek(file, 0, SEEK_DATA);
-        if (d < 0) {
+        
+        // if next segment of data is 0 offset or doesn't exist break
+        if (d <= 0) {
             break;
         }
+        
+        // add hole size
         logSize += d;
 
         // create a hole
@@ -140,11 +156,11 @@ int main(int argc, char** argv) {
     };
 
 
-    std::cout << logSize << " " << size << std::endl;
+    // std::cout << logSize << " " << size << std::endl;
 
+    // create hole if the last one wasn't created
     if(logSize < size){
-        // lseek(dest, 1000000000000000, SEEK_END);
-        lseek(dest, size-logSize, SEEK_END);
+        lseek(dest, (off_t) size-logSize, SEEK_END);
     }
 
     std::cout << "Copied!" << std::endl;
