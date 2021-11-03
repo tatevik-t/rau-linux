@@ -5,54 +5,65 @@
 
 #define BUFFER_SIZE 16
 
+ssize_t LogSize(int& file) {
+    // count logical size using lseek
+    off_t logSize = lseek(file, 0, SEEK_END);
+    
+    return logSize;
+}
+
 ssize_t PhysSize(int& file) {
-    // reset cursor
-    lseek(file, 0, SEEK_SET);
     
-    // variables to keep the size and tmp values
-    ssize_t physSize = 0;
-    off_t add, d;
-    
-    // count physical size
+    // variables to keep the physical size, size, hole offset and data offset values
+    ssize_t physSize = LogSize(file);
+    ssize_t size = 0;
+    off_t dOff;
+    off_t hOff;
+    off_t tmp;
+
+    // iterate over the file
     while(true) {
-        // jump to the next hole, register the size
-        add = lseek(file, 0, SEEK_HOLE);
+        // jump to the next hole
+        dOff = lseek(file, size, SEEK_HOLE);
         
-        // reached end
-        if (add <= 0) {
+        // no holes encountered
+        if(dOff < 0) {
+            // not end of file
+            if(errno != ENXIO) {
+                std::cerr << "Something went wrong" << std::endl;
+                exit(errno);
+            }
             break;
         }
+        // change pointer
+        size = dOff;
 
-        physSize += add;
+        // std::cout << "dOff = " << dOff << std::endl;
         
-        // jump to the next data
-        d = lseek(file, 0, SEEK_DATA);
+        // search for the data and get hole offset (hOff)
+        hOff = lseek(file, size, SEEK_DATA);
+        
+        // std::cout << "hOff = " << hOff << std::endl;
 
-        // reached end
-        if (d <= 0) {
+        // if no data encountered -> break (end of file)
+        if(hOff <= 0) {
+            // not end of file
+            if(errno != ENXIO) {
+                std::cerr << "Something went wrong" << std::endl;
+                exit(errno);
+            }
             break;
         }
+        // change pointer
+        size = hOff;
+
+        // delete hole from physSize
+        physSize -=  (hOff - dOff);
     }
-
-    // reset cursor
-    lseek(file, 0, SEEK_SET);
 
     return physSize;
 }
 
-ssize_t LogSize(int& file) {
-    // reset cursor
-    lseek(file, 0, SEEK_SET);
-    
-    // count logical size using lseek
-    lseek(file, 0, SEEK_SET);
-    off_t logSize = lseek(file, 0, SEEK_END);
-
-    // reset cursor
-    lseek(file, 0, SEEK_SET);
-    
-    return logSize;
-}
 
 void displaySize(int& file) {
     std::cout << "logical size of file " << file << " = " << LogSize(file) << "\t";
@@ -101,26 +112,55 @@ int main(int argc, char** argv) {
     // create a buffer for reading
     char* buffer = new char[BUFFER_SIZE];
     
-    // keep size for checking, get real size
-    ssize_t logSize = 0, add, d;
-    ssize_t size = LogSize(file);
-
-    // iterate over holes and data
-    while (true) {
-        // jump to the next hole, register the size
-        add = lseek(file, 0, SEEK_HOLE);
-        if(add < 0) {
+    // variables for size, data offset, hole offset
+    ssize_t size = 0;
+    off_t dOff = 0;
+    off_t hOff = 0;
+    ssize_t dataSize;
+    ssize_t holeSize;
+    
+    // iterate over the file
+    while(true) {
+        // jump to the next hole
+        dOff = lseek(file, size, SEEK_HOLE);
+        
+        // no holes encountered
+        if(dOff < 0) {
+            // not end of file
+            if(errno != ENXIO) {
+                std::cerr << "Something went wrong" << std::endl;
+                exit(errno);
+            }
             break;
         }
+
+        // change pointer
+        size = dOff;
+        dataSize = dOff - hOff;
+
+        // std::cout << "dataSize = " << dataSize << std::endl;
         
-        // return for copying
-        lseek(file, logSize, SEEK_SET);
-        
-        // add data size
-        logSize += add;
-        
+        // change cursor in origin file
+        off_t tmp = lseek(file, size - dataSize, SEEK_SET);
+
+        // error
+        if (tmp < 0) {
+            std::cerr << "Some error occured" << std::endl;
+            exit(errno);
+        }
+
+        // change cursor in destination
+        tmp = lseek(dest, size - dataSize, SEEK_SET);
+
+        // error
+        if (tmp < 0) {
+            std::cerr << "Some error occured" << std::endl;
+            exit(errno);
+        }
+
         // copy
-        for(size_t i = 1; (i-1)*BUFFER_SIZE < add; ++i) {
+        for(size_t i = 1; (i-1)*BUFFER_SIZE < dataSize; ++i) {
+            
             // read
             ssize_t readBytes = read(file, buffer, BUFFER_SIZE);
             
@@ -129,7 +169,7 @@ int main(int argc, char** argv) {
                 std::cerr << "Could not read from file due to error " << errno << std::endl;
                 exit(errno);
             }
-
+            
             // write content of the buffer into dest
             ssize_t written = write(dest, buffer, readBytes);
 
@@ -139,28 +179,29 @@ int main(int argc, char** argv) {
                 exit(errno);
             }
         }
+
+        // std::cout << "dOff = " << dOff << std::endl;
         
-        // jump to the next data
-        d = lseek(file, 0, SEEK_DATA);
+        // search for the data and get hole offset (hOff)
+        hOff = lseek(file, size, SEEK_DATA);
         
-        // if next segment of data is 0 offset or doesn't exist break
-        if (d <= 0) {
+        // std::cout << "hOff = " << hOff << std::endl;
+
+        if(hOff <= 0) {
+            // not end of file
+            if(errno != ENXIO) {
+                std::cerr << "Something went wrong" << std::endl;
+                exit(errno);
+            }
             break;
         }
+        // change pointer
+        size = hOff;
+
+        // holesize
+        holeSize = hOff - dOff;
         
-        // add hole size
-        logSize += d;
-
-        // create a hole
-        lseek(dest, d, SEEK_CUR);
-    };
-
-
-    // std::cout << logSize << " " << size << std::endl;
-
-    // create hole if the last one wasn't created
-    if(logSize < size){
-        lseek(dest, (off_t) size-logSize, SEEK_END);
+        // std::cout << "holeSize = " << holeSize << std::endl;
     }
 
     std::cout << "Copied!" << std::endl;
