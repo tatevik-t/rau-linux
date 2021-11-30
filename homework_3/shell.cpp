@@ -69,6 +69,7 @@ void delete_spaces(char str[]){
             if(str[j-1] != ' '){
                 break;
             }
+            j--;
         }
     }
 
@@ -87,17 +88,8 @@ int main() {
         delete_spaces(cmnd);
 
         // checking if it's exit command
-        char exit_str[5] = "exit";
-        bool is_exit = true;
-        for(int i = 0; i < strlen(cmnd); i++){
-            if(cmnd[i] != exit_str[i]){
-                is_exit = false;
-                break;
-            }
-        }
-        if(is_exit){
-            exit(0);
-        }
+        std::string cmnd_str(cmnd);
+        if(cmnd_str == "exit") exit(0);
         
         // create new process
         int pid = fork();
@@ -109,11 +101,9 @@ int main() {
         }
 
         // child process
-        if (pid == 0) {
+        if (pid == 0) {           
             // count the words
             int word_c = word_count(cmnd);
-            
-            // std::cout << "Child Process : " << cmnd << std::endl;
             
             // create an array of arguments
             char** a = new char*[word_c];
@@ -124,7 +114,7 @@ int main() {
 
             // encountered the error
             if (executed == -1){
-                std::cerr << "Error: " << strerror(errno) << std::endl;
+                std::cerr << "Error while executing: " << strerror(errno) << std::endl;
                 exit(errno);
             }
         }
