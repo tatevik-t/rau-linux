@@ -87,6 +87,11 @@ int main() {
         std::cin.getline(cmnd, 64);
         delete_spaces(cmnd);
 
+        // if empty -> continue
+        if(std::string(cmnd) == ""){
+            continue;
+        }
+
         // checking if it's exit command
         std::string cmnd_str(cmnd);
         if(cmnd_str == "exit") exit(0);

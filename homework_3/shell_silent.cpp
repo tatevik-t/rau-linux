@@ -91,6 +91,19 @@ int main() {
 
         // child process
         if (pid == 0) {
+
+            // size of 64 is enough for the command
+            char cmnd[64]; 
+            
+            // get the line of command
+            std::cin.getline(cmnd, 64);
+            delete_spaces(cmnd);
+            // std::cout << cmnd << std::endl;
+            
+            // if empty -> continue
+            if(std::string(cmnd) == ""){
+                continue;
+            }
             
             int child_pid = getpid();
             
@@ -156,15 +169,6 @@ int main() {
                 std::cerr << "Couldn't duplicate the err descriptor due to error " << strerror(errno) << std::endl;
                 exit(errno); 
             }
-
-
-            // size of 64 is enough for the command
-            char cmnd[64]; 
-            
-            // get the line of command
-            std::cin.getline(cmnd, 64);
-            delete_spaces(cmnd);
-            // std::cout << cmnd << std::endl;
             
             // count the words
             int word_c = word_count(cmnd);
@@ -198,7 +202,9 @@ int main() {
                 exit(errno);
             }
         }
-        break;
     }
     return 0;
 }
+
+// to run create file with commands
+// ./shell_silent < cmnd 
