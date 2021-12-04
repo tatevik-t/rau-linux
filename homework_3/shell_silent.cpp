@@ -189,7 +189,7 @@ int main() {
             int close0 = close(in_fd);
             int close1 = close(out_fd);
             int close2 = close(err_fd);
-            return (close0 < 0 || close1 || close2) ? errno : 0;
+            return (close0 < 0 || close1 < 0 || close2 < 0) ? errno : 0;
         }
 
         int status = 0;
