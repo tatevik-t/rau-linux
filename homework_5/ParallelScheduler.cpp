@@ -8,23 +8,35 @@ void* function(void* arg);
 // constructor with max number of threads
 ParallelScheduler::ParallelScheduler(int num) :  N(num)
 {
-    // // mutex for locking the queue 
-    // pthread_mutex_t* mutex;
-    // pthread_mutex_init(mutex, NULL);
+    // mutex for locking the queue 
+    pthread_mutex_t* mutex;
+    int inited = pthread_mutex_init(mutex, NULL);
+    if (inited != 0){
+        std::cerr << "Error while initializing the mutex" << std::endl;
+        exit(inited);
+    }   
+    // std::cout << "MUTEX" << std::endl;
+
     
-    // // cond var for status of queue
-    // pthread_cond_t* filled;
-    // pthread_cond_init(filled, NULL);
+    // cond var for status of queue
+    pthread_cond_t* filled;
+    inited = pthread_cond_init(filled, NULL);
+    if (inited != 0){
+        std::cerr << "Error while initializing the mutex" << std::endl;
+        exit(inited);
+    }   
+    // std::cout << "COND VAR" << std::endl;
     
+    // threads' queue
     thread_queue = new std::queue<std::pair<void* (*)(void*), void*>>;
     
-    std::cout << "THREADS" << std::endl;
+    // std::cout << "THREADS" << std::endl;
     
     // create threads
     threads = new pthread_t[N];
     for(int i = 0; i < N; ++i){
         int created = pthread_create(&threads[i], NULL, function, (void*)this );
-        std::cout << "CREATED THREAD NUMBER " << i << std::endl;
+        // std::cout << "CREATED THREAD NUMBER " << i << std::endl;
         if(created != 0){
             std::cerr << "Error while creating threads: " << created << std::endl;
             exit(created);
@@ -35,7 +47,7 @@ ParallelScheduler::ParallelScheduler(int num) :  N(num)
 // destructor
 ParallelScheduler::~ParallelScheduler()
 {
-    std::cout << "DESTRUCTOR" << std::endl;
+    // std::cout << "DESTRUCTOR" << std::endl;
 
     while(!thread_queue->empty()) {}
 
@@ -43,7 +55,7 @@ ParallelScheduler::~ParallelScheduler()
     for(size_t i = 0; i < N; ++i)
     {
        int joined = pthread_join(threads[i], NULL);
-       std::cout << "CREATED THREAD NUMBER " << i << std::endl;
+    //    std::cout << "JOINED THREAD NUMBER " << i << std::endl;
        if(joined != 0){
            std::cerr << "Error while joining threads: " << joined << std::endl;
            exit(joined);
@@ -60,7 +72,7 @@ ParallelScheduler::~ParallelScheduler()
 // run a function in thread
 void ParallelScheduler::run(void* (*function)(void*), void* argument)
 {
-    std::cout << "RUN" << std::endl;
+    // std::cout << "RUN" << std::endl;
 
     // lock the queue
     int result = pthread_mutex_lock(mutex);
