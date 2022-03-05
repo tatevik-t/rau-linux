@@ -85,9 +85,9 @@ int main() {
     sem_unlink(memory_name); 
 
     // unmap and close
-    munmap(addr, sizeof(int));
+    munmap(addr, size);
     close(fd);
     shm_unlink("prod-cons-buffer");
-    return 0;
+    
     return 0;
 }
