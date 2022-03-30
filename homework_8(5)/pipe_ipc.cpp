@@ -14,34 +14,34 @@ int main(){
     // fill matrix with random values
     srand (time(NULL));
     for(long long i = 0; i < N; ++i){
-        arr[i] = 1;                     
-        // arr[i] = rand() % 10000;
+        // arr[i] = 1;                     
+        arr[i] = rand() % 10000;
     }
 
     // struct for keeping child process info
     struct ChildProcessInfo {
         int pid;
         int pipefd[2];
-        int pipefd2[2];
     };
+    
+    int pipefd_out[2];
 
     // array of children info
     struct ChildProcessInfo * cpi = new ChildProcessInfo[M];
     
     long long sum = 0;
 
+    // create pipe for output       
+    if (pipe(pipefd_out) == -1){
+        std::cerr << "(parent) Error while creating pipe_out: " << strerror(errno) << std::endl;
+        exit(errno);
+    }
+
     // creating processes
     for(int i = 0; i < M; i++){
-        // create two pipes for input and output for each child process
+        // create pipe for input for each child process
         int pipe_result = pipe(cpi[i].pipefd);        
              
-        if (pipe_result == -1){
-            std::cerr << "(parent) Error while creating pipe: " << strerror(errno) << std::endl;
-            exit(errno);
-        }
-
-        int pipe_result2 = pipe(cpi[i].pipefd2);
-        
         if (pipe_result == -1){
             std::cerr << "(parent) Error while creating pipe: " << strerror(errno) << std::endl;
             exit(errno);
@@ -73,7 +73,7 @@ int main(){
 
             // close unused halves of pipes
             close(cpi[i].pipefd[1]);    
-            close(cpi[i].pipefd2[0]);   
+            close(pipefd_out[0]);   
              
             long long I;
             long long J;
@@ -97,22 +97,25 @@ int main(){
 
             std::cout << "(child " << i << ") temp_sum = " << temp_sum << std::endl;
             
-            if (write(cpi[i].pipefd2[1], &temp_sum, sizeof(long long)) < 0){
+            if (write(pipefd_out[1], &temp_sum, sizeof(long long)) < 0){
                 std::cerr << "(child " << i << ") Error while writing to pipe: " << strerror(errno) << std::endl;
                 exit(errno);
             }
 
             close(cpi[i].pipefd[0]);
-            close(cpi[i].pipefd2[1]);
+            close(pipefd_out[1]);
 
             exit(0);
         }
         
         // parent process
         else if (cpi[i].pid > 0) {
+            close(cpi[i].pipefd[0]);
             close(cpi[i].pipefd[1]);
         }
     }
+
+    close(pipefd_out[1]);
 
     int status;
     long long temp_sum;
@@ -122,14 +125,16 @@ int main(){
         waitpid(cpi[i].pid, &status, 0);
         
         // get temp_sum from it
-        if (read(cpi[i].pipefd2[0], &temp_sum, sizeof(long long)) < 0){
+        if (read(pipefd_out[0], &temp_sum, sizeof(long long)) < 0){
             std::cerr << "Error while reading from pipe for getting temp_sum : " << strerror(errno) << std::endl;
             exit(errno);
         } 
         sum += temp_sum;
     }
 
-    std::cout << sum;
+    std::cout << "(parent) sum = " << sum << std::endl;
+
+    close(pipefd_out[0]);
 
 	delete [] arr;
 	delete [] cpi;
