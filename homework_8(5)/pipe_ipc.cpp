@@ -11,7 +11,7 @@ int main(){
     std::cin >> N >> M;
     long long * arr = new long long[N];
 
-    // fill matrix with random values
+    // fill array with random values
     srand (time(NULL));
     for(long long i = 0; i < N; ++i){
         // arr[i] = 1;                     
@@ -120,11 +120,11 @@ int main(){
     int status;
     long long temp_sum;
 
-    // wait for children processes execution end
-    for (long long i = 0; i < M; ++i) {
-        waitpid(cpi[i].pid, &status, 0);
-        
-        // get temp_sum from it
+    // wait for all children processes
+    waitpid(0, &status, 0);
+
+    for (long long i = 0; i < M; ++i) {    
+        // get temp_sum from pipe_out
         if (read(pipefd_out[0], &temp_sum, sizeof(long long)) < 0){
             std::cerr << "Error while reading from pipe for getting temp_sum : " << strerror(errno) << std::endl;
             exit(errno);
