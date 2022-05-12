@@ -13,7 +13,7 @@ void* write(void* arg){
 int main(){
 	// create a scheduler
 	ParallelScheduler* scheduler = new ParallelScheduler(32);
-	for(int i = 0; i < 2; i++){
+	for(int i = 0; i < 64; i++){
 		scheduler -> run(write, &i);
 	}
 	return 0;
