@@ -15,7 +15,7 @@ class Request {
 
 public:
 
-    Request(std::string _method, std::string _path, std::string _html_ver, std::string _body, std::map<std::string, std::string> _headers) : 
+    Request(std::string _method, std::string _path, std::string _html_ver, std::string _body, std::map<std::string, std::string> _headers = {}) : 
         method(_method),
         html_ver(_html_ver),
         path(_path),
