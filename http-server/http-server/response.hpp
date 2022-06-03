@@ -13,7 +13,7 @@ class Response {
     std::string body;
 
 public:
-
+    Response(){};
     Response(std::string _html_ver, int _status_code, std::string _body, std::map<std::string, std::string> _headers) : 
         html_ver(_html_ver), 
         status_code(_status_code),
