@@ -2,7 +2,7 @@
 #include "http-server/httpserver.hpp"
 
 Response greeting(Request req) {
-    Response a("HTTP/1.0", 200, "hey");
+    Response a = Response("HTTP/1.0", 200, "OK", "hey");
     return a;
 }
 

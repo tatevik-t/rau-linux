@@ -38,6 +38,10 @@ public:
     std::string get_method() {
         return method;
     }
+
+    void add_body(std::string _body) {
+        body = _body;
+    }
 };
 
 

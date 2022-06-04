@@ -15,8 +15,7 @@ void HTTPServer::run(){
 
     int serverFd = socket(AF_INET, SOCK_STREAM, 0);
     
-    if (serverFd < 0)
-    {
+    if (serverFd < 0) {
         std::cerr << "Error while creating a socket due to error "<< strerror(errno) << std::endl;
         exit(errno);
     }
@@ -28,26 +27,23 @@ void HTTPServer::run(){
 
     int bound = bind(serverFd, (const struct sockaddr *)&address, sizeof(address));
 
-    if (bound < 0)
-    {
+    if (bound < 0) {
         std::cerr << "Could not bind to given port" << std::endl;
         exit(errno);
     }
     
     int listening = listen(serverFd, 1024);
 
-    if (listening < 0)
-    {
+    if (listening < 0) {
         std::cerr << "Could not start listening" << std::endl;
         exit(errno);
     }
 
-    while (true)
-    {
+    while (true) {
         sockaddr_in clientAddress;
         unsigned int clientAddressLength;
         int clientFd = accept(serverFd, (struct sockaddr *)&clientAddress, &clientAddressLength);
-     
+
         struct in_addr clientAddr = clientAddress.sin_addr;
         int clientPort = ntohs(clientAddress.sin_port);
         std::cout << "Addr: " << clientAddr.s_addr << std::endl;
@@ -66,30 +62,59 @@ void HTTPServer::addHandler(const std::string &method, const std::string & path,
 
 void request_process(int clientFd, std::map< std::pair<std::string,std::string>, std::function<Response(Request)>> handlers) {
     // read from socket to buffer
-    int buffer_size = 100;
+    ssize_t buffer_size = 100;
     char buff[buffer_size];
-    ssize_t receivedBytes = recv(clientFd, (void *) buff, buffer_size, 0);
+    std::string received_str = "";
 
-    if (receivedBytes < 0)
-    {
-        std::cerr << "Could not read from client. Error: " << strerror(errno) << std::endl;
-        close(clientFd);
+    bool end = false;
+
+    while(!end) {
+        ssize_t receivedBytes = recv(clientFd, (void *) buff, buffer_size, 0);
+        
+        if (receivedBytes < 0) {
+            std::cerr << "Could not read from client. Error: " << strerror(errno) << std::endl;
+            close(clientFd);
+        }
+
+        for (size_t i = 0; i < buffer_size; i++){
+            std::cout << buff[i] << (int) buff[i] << std::endl;
+            if (buff[i] == '\n' and received_str.back() == 13){
+                received_str.back() = '\n';
+                break;
+            }
+            if (buff[i] == '\n' && received_str.back() == '\n') {
+                end = true;
+                int cl_idx = received_str.find("Content-Length: ");
+                int k = 0;
+                if(received_str.find("Content-Length: ") != std::string::npos) {
+                    for (int j = i; j < i + stoi(received_str.substr(cl_idx + 16, received_str.find('\n', cl_idx + 14))); j++) {
+                        if (j > buffer_size) {
+                            ssize_t receivedBytes = recv(clientFd, (void *) buff, buffer_size, 0);
+                            k = buffer_size;
+                        }
+                        received_str += buff[j-k];
+                    }
+                }
+                break;
+            }
+            received_str += buff[i];
+        }
     }
-
     std::cout << "Got request: " << std::endl;
 
     // make a request from string
-    std::string buff_str(buff, receivedBytes);;
-    std::cout << buff_str << std::endl;
+    std::cout << received_str << std::endl;
+
+    Request request = parse_request(received_str);
+
     
-    Request request = parse_request(buff_str);
 
     // pass it to maps function
     std::function<Response(Request)> f = handlers[{request.get_method(), request.get_path()}];
     Response response;
     
     if (f == NULL){
-        response = Response(request.get_html_ver(), 404, "");
+        response = Response(request.get_html_ver(), 404, "Page not found", "");
     }
     else {
         response = f(request);
