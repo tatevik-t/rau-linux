@@ -77,22 +77,22 @@ void request_process(int clientFd, std::map< std::pair<std::string,std::string>,
         }
 
         for (size_t i = 0; i < buffer_size; i++){
-            std::cout << buff[i] << (int) buff[i] << std::endl;
             if (buff[i] == '\n' and received_str.back() == 13){
                 received_str.back() = '\n';
                 break;
             }
-            if (buff[i] == '\n' && received_str.back() == '\n') {
+            if (buff[i] == 13 && received_str.back() == '\n') {
                 end = true;
                 int cl_idx = received_str.find("Content-Length: ");
                 int k = 0;
-                if(received_str.find("Content-Length: ") != std::string::npos) {
+                if(cl_idx != std::string::npos) {
+                    std::string body_str = "";
                     for (int j = i; j < i + stoi(received_str.substr(cl_idx + 16, received_str.find('\n', cl_idx + 14))); j++) {
                         if (j > buffer_size) {
                             ssize_t receivedBytes = recv(clientFd, (void *) buff, buffer_size, 0);
                             k = buffer_size;
                         }
-                        received_str += buff[j-k];
+                        body_str += buff[j-k];
                     }
                 }
                 break;
@@ -106,8 +106,6 @@ void request_process(int clientFd, std::map< std::pair<std::string,std::string>,
     std::cout << received_str << std::endl;
 
     Request request = parse_request(received_str);
-
-    
 
     // pass it to maps function
     std::function<Response(Request)> f = handlers[{request.get_method(), request.get_path()}];
@@ -143,6 +141,43 @@ void request_process(int clientFd, std::map< std::pair<std::string,std::string>,
 
 Request parse_request(std::string request_str) {
     // parse and make request object
-    Request request = Request("GET", "/hey", "HTTP/1.0", "");
+    std::string method = "";
+    std::string path = "";
+    std::string version = "";
+    std::map<std::string, std::string> headers = {};
+    std::string body = "";
+    std::string buff = "";
+    bool once_newline = false;
+    for (char i : request_str) {
+        if (i == ' ') {
+            if (method.empty()){
+                method = buff;
+                buff = "";
+            }
+            else if (path.empty()){
+                path = buff;
+                buff = "";
+            }
+        }
+        else if (i == '\n') {
+            if (once_newline) {
+                break;
+            }
+            once_newline = true;        
+            if (version.empty()){
+                version = buff;
+            }
+            if (buff.find(": ") != std::string::npos)
+                headers.insert({buff.substr(0, buff.find(": ")), buff.substr(buff.find(": ") + 2, buff.size() )} );
+        }
+        else{
+            once_newline = false;
+            buff += i;
+        }
+    }
+    if(request_str.find("\n\n") != std::string::npos)
+        body = request_str.substr(request_str.find("\n\n"), buff.size());
+
+    Request request = Request(method, path, version, body, headers);
     return request;
 }
